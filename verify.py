@@ -1,36 +1,27 @@
-import os
-from dotenv import load_dotenv
 import discord
 from discord.ext import commands
+from dotenv import load_dotenv
+import os
 
-# --------------------------
-# 環境変数から Token を取得
 load_dotenv()
+
 TOKEN = os.environ.get("DISCORD_TOKEN")
-if TOKEN is None:
-    raise ValueError("DISCORD_TOKEN が環境変数に設定されていません。")
+VERIFY_ROLE_ID = int(os.environ.get("VERIFY_ROLE_ID"))
+CHANNEL_ID = int(os.environ.get("CHANNEL_ID"))
 
-# --------------------------
-# インテント
 intents = discord.Intents.default()
-intents.members = True  # メンバー情報取得用
-
+intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# --------------------------
-# 認証後に付与するロールID
-VERIFY_ROLE_ID = 1429026945458507816  # 自分のサーバーIDに置き換えてね
-
-# --------------------------
-# 認証パネルボタン
+# ----- ボタン View -----
 class VerifyView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        # FAQ ボタンはリンクボタン
+        # FAQリンクボタン
         self.add_item(discord.ui.Button(
             label="FAQ",
             style=discord.ButtonStyle.link,
-            url="https://your-faq-link"  # 自分の FAQ URL に置き換え
+            url="https://sites.google.com/view/zatudan-server-verifybot/faq"
         ))
 
     @discord.ui.button(label="Verify", style=discord.ButtonStyle.green, custom_id="verify_button")
@@ -42,18 +33,25 @@ class VerifyView(discord.ui.View):
             await interaction.user.add_roles(role)
             await interaction.response.send_message("🎉 認証が完了しました！", ephemeral=True)
 
-# --------------------------
-# サーバーID（ギルドID）
-GUILD_ID = 1429022740517748836  # 自分のサーバーID
-
+# ----- Bot 起動時 -----
 @bot.event
 async def on_ready():
-    # ギルド単位でスラッシュコマンド同期
-    await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print(f"{bot.user} でログインしました！")
 
-# --------------------------
-# スラッシュコマンドで認証パネル送信
+    channel = bot.get_channel(CHANNEL_ID)
+    # message_id.txt に以前送ったメッセージIDがあれば再セット
+    try:
+        with open("message_id.txt", "r") as f:
+            msg_id = int(f.read().strip())
+            msg = await channel.fetch_message(msg_id)
+            await msg.edit(view=VerifyView())
+            print("既存の認証パネルを復元しました。")
+    except FileNotFoundError:
+        print("message_id.txt が見つかりません。")
+    except discord.NotFound:
+        print("保存されたメッセージが見つかりません。")
+
+# ----- スラッシュコマンドで送信 -----
 @bot.tree.command(name="sendverify", description="認証パネルを送信します")
 async def sendverify(interaction: discord.Interaction):
     embed = discord.Embed(
@@ -67,8 +65,14 @@ async def sendverify(interaction: discord.Interaction):
     )
     embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/3064/3064197.png")
     view = VerifyView()
-    await interaction.response.send_message(embed=embed, view=view)
 
-# --------------------------
-# Bot 起動
+    await interaction.response.send_message(embed=embed, view=view)
+    msg = await interaction.original_response()
+    
+    # 送信したメッセージIDを保存
+    with open("message_id.txt", "w") as f:
+        f.write(str(msg.id))
+    print("認証パネルを送信して message_id.txt に保存しました。")
+
+# ----- Bot 起動 -----
 bot.run(TOKEN)
