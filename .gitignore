@@ -1,0 +1,12 @@
+# 環境変数ファイル（Botトークンとか秘密情報）
+.env
+
+# Python のキャッシュや一時ファイル
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDEやエディタの設定ファイル
+.vscode/
+.idea/
