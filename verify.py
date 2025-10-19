@@ -74,5 +74,20 @@ async def sendverify(interaction: discord.Interaction):
         f.write(str(msg.id))
     print("認証パネルを送信して message_id.txt に保存しました。")
 
+# --- ファイルの一番下に追加 ---
+from flask import Flask
+from threading import Thread
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+Thread(target=run).start()
+
 # ----- Bot 起動 -----
 bot.run(TOKEN)
