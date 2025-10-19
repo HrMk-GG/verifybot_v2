@@ -76,6 +76,7 @@ async def sendverify(interaction: discord.Interaction):
         f.write(str(msg.id))
     print("認証パネルを送信して message_id.txt に保存しました。")
 
+# === FlaskでWebサーバーを起動（Replit用） ===
 app = Flask('')
 
 @app.route('/')
@@ -85,8 +86,11 @@ def home():
 def run():
     app.run(host='0.0.0.0', port=8080)
 
-Thread(target=run).start()
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
 
+keep_alive()
 
 # ----- Bot 起動 -----
 bot.run(TOKEN)
