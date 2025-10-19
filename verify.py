@@ -10,7 +10,9 @@ load_dotenv()
 TOKEN = os.environ.get("DISCORD_TOKEN")
 VERIFY_ROLE_ID = int(os.environ.get("VERIFY_ROLE_ID"))
 CHANNEL_ID = int(os.environ.get("CHANNEL_ID"))
-GUILD_ID = int(os.environ.get("1429022740517748836"))  # テストするサーバーID
+
+# サーバーIDを固定
+GUILD_ID = 1429022740517748836
 
 intents = discord.Intents.default()
 intents.members = True
@@ -41,26 +43,40 @@ class VerifyView(discord.ui.View):
 async def on_ready():
     print(f"{bot.user} でログインしました！")
 
-    # ギルド単位でスラッシュコマンド同期（テスト用）
+    # ギルド単位でスラッシュコマンド同期（即時反映用）
     try:
         guild = discord.Object(id=GUILD_ID)
         await bot.tree.sync(guild=guild)
         print("スラッシュコマンドをギルド単位で同期しました！")
     except Exception as e:
-        print(f"スラッシュコマンド同期でエラー: {e}")
+        print(f"同期エラー: {e}")
 
-    # 既存の認証パネルを復元
+    # 古いパネル削除＆新規送信
     channel = bot.get_channel(CHANNEL_ID)
+    embed = discord.Embed(
+        title="🔐 みんなで雑談！へようこそ！",
+        description=(
+            "このサーバーを利用するには、まず認証が必要です。\n\n"
+            "• **Verify** を押して認証を始めよう！\n"
+            "• **FAQ** ボタンで詳しい説明を確認できます。"
+        ),
+        color=0x2F3136
+    )
+    embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/3064/3064197.png")
+
     try:
         with open("message_id.txt", "r") as f:
-            msg_id = int(f.read().strip())
-            msg = await channel.fetch_message(msg_id)
-            await msg.edit(view=VerifyView())
-            print("既存の認証パネルを復元しました。")
-    except FileNotFoundError:
-        print("message_id.txt が見つかりません。")
-    except discord.NotFound:
-        print("保存されたメッセージが見つかりません。")
+            old_msg_id = int(f.read().strip())
+            old_msg = await channel.fetch_message(old_msg_id)
+            await old_msg.delete()
+            print("古いパネルを削除しました。")
+    except:
+        pass
+
+    new_msg = await channel.send(embed=embed, view=VerifyView())
+    with open("message_id.txt", "w") as f:
+        f.write(str(new_msg.id))
+    print("新しい認証パネルを送信しました。")
 
 # ----- /sendverify スラッシュコマンド -----
 @bot.tree.command(name="sendverify", description="認証パネルを送信します")
@@ -77,15 +93,24 @@ async def sendverify(interaction: discord.Interaction):
     embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/3064/3064197.png")
     view = VerifyView()
 
+    # 古いパネル削除
+    channel = interaction.channel
+    try:
+        with open("message_id.txt", "r") as f:
+            old_msg_id = int(f.read().strip())
+            old_msg = await channel.fetch_message(old_msg_id)
+            await old_msg.delete()
+    except:
+        pass
+
     await interaction.response.send_message(embed=embed, view=view)
     msg = await interaction.original_response()
 
-    # メッセージIDを保存
     with open("message_id.txt", "w") as f:
         f.write(str(msg.id))
     print("認証パネルを送信して message_id.txt に保存しました。")
 
-# === FlaskでWebサーバーを起動（Replit用） ===
+# === FlaskでWebサーバーを起動（Replit/Render用） ===
 app = Flask('')
 
 @app.route('/')
