@@ -10,6 +10,7 @@ load_dotenv()
 TOKEN = os.environ.get("DISCORD_TOKEN")
 VERIFY_ROLE_ID = int(os.environ.get("VERIFY_ROLE_ID"))
 CHANNEL_ID = int(os.environ.get("CHANNEL_ID"))
+GUILD_ID = int(os.environ.get("1429022740517748836"))  # テストするサーバーID
 
 intents = discord.Intents.default()
 intents.members = True
@@ -40,8 +41,16 @@ class VerifyView(discord.ui.View):
 async def on_ready():
     print(f"{bot.user} でログインしました！")
 
+    # ギルド単位でスラッシュコマンド同期（テスト用）
+    try:
+        guild = discord.Object(id=GUILD_ID)
+        await bot.tree.sync(guild=guild)
+        print("スラッシュコマンドをギルド単位で同期しました！")
+    except Exception as e:
+        print(f"スラッシュコマンド同期でエラー: {e}")
+
+    # 既存の認証パネルを復元
     channel = bot.get_channel(CHANNEL_ID)
-    # message_id.txt に以前送ったメッセージIDがあれば再セット
     try:
         with open("message_id.txt", "r") as f:
             msg_id = int(f.read().strip())
@@ -53,7 +62,7 @@ async def on_ready():
     except discord.NotFound:
         print("保存されたメッセージが見つかりません。")
 
-# ----- スラッシュコマンドで送信 -----
+# ----- /sendverify スラッシュコマンド -----
 @bot.tree.command(name="sendverify", description="認証パネルを送信します")
 async def sendverify(interaction: discord.Interaction):
     embed = discord.Embed(
@@ -70,8 +79,8 @@ async def sendverify(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, view=view)
     msg = await interaction.original_response()
-    
-    # 送信したメッセージIDを保存
+
+    # メッセージIDを保存
     with open("message_id.txt", "w") as f:
         f.write(str(msg.id))
     print("認証パネルを送信して message_id.txt に保存しました。")
